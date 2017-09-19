@@ -1,20 +1,42 @@
 (function ($) {
     "use strict";
 
-    $.post2 = function (url, options, callback, type) {
+    // -------------------- function --------------------
+    $.abPost = function (url, options, callback, type) {
         var defaults = {
             __config: {
-                amir: 'asd'
+                type: 'json',
+                form: null,
+                group: '',
+                alert: null
             }
         };
 
-        options = $.extend(defaults, options);
+        var data = $.extend(defaults, options);
+        var config = data.__config;
+        if (type === undefined) config.type;
+        if (callback === undefined) config.callback;
+        delete data.__config;
 
-        delete options.__config;
+        if (config.form) {
+            /*
+            config.form.find('.has-error').removeClass('has-error').find('.control-label').tooltip('destroy');
 
-        if (type === undefined) type = 'json';
+            if (!config.alert)
+                config.alert = config.form.find('.alert_message');
+            */
 
-        return $.post(url, options, callback, type).done(function (response) {
+            if (window.CKEDITOR != undefined) {
+                for (var instanceName in CKEDITOR.instances)
+                    CKEDITOR.instances[instanceName].updateElement();
+            }
+
+            data = $.extend(data, config.form.serialize());
+        }
+
+        //config.alert.html('').slideUp('fast');
+
+        return $.post(url, data, callback, type).done(function (response) {
             if (typeof response.message !== 'undefined') {
                 options.success(response);
                 $modal.modal('hide');
@@ -61,31 +83,59 @@
                 message = jqXhr.responseJSON.error;
             } else
                 message = 'خطا در برقراری ارتباط با سرور';
-			
-			alert(message); // ToDo: UI
-        })
+
+            alert(message); // ToDo: UI
+        }).always(function () {
+            console.log(config.group);
+            config.group.prop('disabled', false).find('.ab-form-loading').remove();
+        });
     };
 
 
-    $.fn.post2 = function (url, options, callback, type) {
+    // -------------------- module --------------------
+    $.fn.abPost = function (options, data) {
+        var defaults = {
+            type: 'json',
+            callback: null,
+            form: null,
+            group: ''
+        };
+
+        options = $.extend(defaults, options);
+
+        if (data === undefined) data = {};
+
         return this.each(function () {
-            $(this).prop('disabled', false).click(function () {
-                $.post2(url, options, callback, type);
+            var $btn = $(this);
+
+            if (!options.form) {
+                if ($btn.attr('data-form'))
+                    options.form = $('#' + $btn.attr('data-form'));
+                else
+                    options.form = $(this.form);
+            }
+
+            $btn.prop('disabled', false).click(function (event) {
+                event.preventDefault(); // cancel default behavior
+
+                var $btn = $(this).prop('disabled', true);
+                $btn.find('.ab-form-loading').remove();
+                $btn.append('<i class="fa fa-refresh fa-spin fa-fw ab-form-loading"></i>');
+
+                options.group = $(options.group);
+                delete options.callback;
+                delete options.type;
+                data.__config = options;
+                $.abPost(options.form.attr('action'), data, options.callback, options.type);
             });
         });
     };
 
 
+    // -------------------- all --------------------
     $(function () {
         $('.form-submit').each(function () {
-            var $this = $(this);
-            var $form = $('#' + $this.attr('data-form'));
-            $this.post2($form.attr('action'), {
-                __config: {
-                    'form': $form,
-                    'modal': $this.attr('data-modal') || true
-                }
-            });
+            $(this).abPost();
         });
     });
 }(jQuery));
