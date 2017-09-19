@@ -1,0 +1,23 @@
+{
+  "name": "amir2b-assets",
+  "version": "0.1.0",
+  "description": "useful assets",
+  "main": "dist/js/script.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/amir2b/assets.git"
+  },
+  "author": "Amir Bashiri",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/amir2b/assets/issues"
+  },
+  "homepage": "https://github.com/amir2b/assets#readme"
+}
