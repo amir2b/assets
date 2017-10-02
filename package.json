@@ -1,6 +1,6 @@
 {
   "name": "amir2b-assets",
-  "version": "0.1.2",
+  "version": "0.1.4",
   "description": "useful assets",
   "main": "dist/js/script.js",
   "directories": {

@@ -1,7 +1,7 @@
 (function ($) {
     "use strict";
 
-    if(!$.abPost) {
+    if (!$.abPost) {
 
         // -------------------- function --------------------
         $.abPost = function (url, options, callback, type) {
@@ -10,7 +10,9 @@
                     type: 'json',
                     form: null,
                     group: '',
-                    alert: null
+                    alert: null,
+                    beforeSend: function (data) {
+                    },
                 }
             };
 
@@ -21,36 +23,46 @@
             delete data.__config;
 
             if (config.form) {
-                /*
-                config.form.find('.has-error').removeClass('has-error').find('.control-label').tooltip('destroy');
+                config.form.find('.form-group.has-error').removeClass('has-error').find('.control-label').tooltip('destroy');
 
                 if (!config.alert)
                     config.alert = config.form.find('.alert_message');
-                */
 
                 if (window.CKEDITOR != undefined) {
                     for (var instanceName in CKEDITOR.instances)
                         CKEDITOR.instances[instanceName].updateElement();
                 }
 
-                data = $.extend(data, config.form.serialize());
+                var dataTemp = data;
+                data = config.form.serializeArray();
+                for (var key in dataTemp) {
+                    if (dataTemp.hasOwnProperty(key)) {
+                        data.push({name:key, value:dataTemp[key]});
+                    }
+                }
             }
 
-            //config.alert.html('').slideUp('fast');
+            if (!config.alert || !config.alert.length)
+                config.alert = false;
+            else
+                config.alert.html('').slideUp('fast');
+
+            config.beforeSend(data);
 
             return $.post(url, data, callback, type).done(function (response) {
-                if (typeof response.message !== 'undefined') {
+                /*if (typeof response.message !== 'undefined') {
                     //$modal.modal('hide');
                 }
-                else if (options.alert) {
-                    //options.alert.html('خطای ارتباط با سرور').removeClass('alert-success').addClass('alert-danger').slideDown('fast');
+                else if (config.alert) {
+                    config.alert.html('خطای ارتباط با سرور').removeClass('alert-success').addClass('alert-danger').slideDown('fast');
                     //$modal.modal('hide');
                 }
                 else {
                     //$modal.find('.modal-header').text('پاسخ سرور');
                     //$modal.find('.modal-body').html('خطای ارتباط با سرور');
-                }
+                }*/
             }).fail(function (jqXhr) {
+                console.log(jqXhr.responseType);
                 var message = '', messageList = false;
                 if (jqXhr.status === 401) {
                     window.location.replace(Site.root + '/login');
@@ -70,8 +82,8 @@
                             messages.push(value);
                         }
 
-                        if (options.form) {
-                            options.form.find('.control-label[for="input_' + key + '"]').tooltip({
+                        if (config.form) {
+                            config.form.find('.control-label[for="input_' + key + '"]').tooltip({
                                 title: messages.join('<br/>'),
                                 placement: 'left',
                                 html: true
@@ -82,10 +94,15 @@
                         message = '<ul>' + message + '</ul>';
                 } else if (jqXhr.responseJSON !== undefined && jqXhr.responseJSON.error !== undefined) {
                     message = jqXhr.responseJSON.error;
+                } else if (jqXhr.responseText.length > 0 && jqXhr.responseText.length < 100) {
+                    message = jqXhr.responseText;
                 } else
                     message = 'خطا در برقراری ارتباط با سرور';
 
-                alert(message); // ToDo: UI
+                if (config.alert)
+                    config.alert.html(message).removeClass('alert-success').addClass('alert-danger').slideDown('fast');
+                else
+                    alert(message);
             }).always(function () {
                 if (config.group)
                     config.group.prop('disabled', false).find('.ab-form-loading').remove();
@@ -99,7 +116,16 @@
                 type: 'json',
                 callback: null,
                 form: null,
-                group: null
+                group: null,
+                form_action: null,
+                beforeSend: function (data) {
+                },
+                done: function (responce) {
+                },
+                fail: function (jqXhr) {
+                },
+                always: function () {
+                },
             };
 
             options = $.extend(defaults, options);
@@ -119,8 +145,20 @@
                     else
                         options.form = $(this.form);
                 }
-                if (options.form && !options.form.length)
+
+                if (!options.form || !options.form.length)
                     options.form = false;
+
+                if (!options.form_action) {
+                    if ($btn.attr('data-form-action'))
+                        options.form_action = $btn.attr('data-form-action');
+                    else if (options.form)
+                        options.form_action = options.form.attr('action');
+                    else {
+                        alert('There is no action');
+                        return false;
+                    }
+                }
 
                 if (options.group === null) {
                     if ($btn.attr('data-group'))
@@ -133,7 +171,6 @@
 
                 var callback = options.callback;
                 var type = options.type;
-                var url = options.form.attr('action');
 
                 delete options.callback;
                 delete options.type;
@@ -149,7 +186,16 @@
                     if (options.group)
                         options.group.prop('disabled', true);
 
-                    $.abPost(url, data, callback, type);
+                    return $.abPost(options.form_action, data, callback, type).done(function (response) {
+                        if (options.success)
+                            options.success(response);
+                    }).done(function (responce) {
+                        options.done(responce);
+                    }).fail(function (jqXhr) {
+                        options.fail(jqXhr);
+                    }).always(function () {
+                        options.always();
+                    });
                 });
             });
         };
